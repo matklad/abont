@@ -224,10 +224,12 @@ enum SplitArrangementBinary {
 }
 
 /// Maybe this is better?
-enum SplitTree {
+enum SplitArrangement {
     Leaf(SplitRef),
-    Horisontal(Vec<SplitTree>),
-    Vertical(Vec<SplitTree>),
+    Split {
+      direction: Vertical | Horizontal,
+      splits: Vec<SplitArrangement>,
+    }
 }
 
 
