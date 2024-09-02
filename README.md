@@ -266,6 +266,18 @@ TBD
 
 ## Prior Art
 
+* Acme: https://research.swtch.com/acme.pdf.
+
+  It seems _very_ close to what I want here, with three major differences:
+
+    * I am not a big fan of mice, I'd love to keep things keyboard driven
+    * Acme is plain-text editor (not even syntax highlighting!). It works by heuristically
+      identifying text as file names, etc. I think it makes more sense to follow Emacs model and
+      endow the text with attributes!
+    * It only has "external" extensibility. To me, it seems that you'd want to both script the
+      system from inside, as well as extract larger things into separate processes. The API should
+      be the same either way! External/Internal is the question of distribution, not interaction!
+
 * Emacs: magit, dired, eshell
 * terminal.click
 * Arcan's cat9
