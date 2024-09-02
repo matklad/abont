@@ -80,8 +80,8 @@ would be more convenient.
 
 ### Scripting Language
 
-As far as I am aware, there's no suitable scripting language fo Abont. The following to design
-criteria exclude all producing languages, as far as I am aware:
+As far as I am aware, there's no suitable scripting language for Abont. The following two design
+criteria exclude all popular languages, as far as I am aware:
 
 * Static (but maybe gradual) type system. The tooling unlocked by static typing is just too
   valuable. It is much easier to extend something if you can auto-complete your way through the API.
@@ -94,11 +94,20 @@ interpreter to use utf8?
 Alternatively, perhaps "just compile to WASM" is an answer? Doesn't seem so, as there are at least
 two blockers:
 
-* WASM still lacks component model (I think?). Binding compenents on the level of byte buffers is
+* WASM still lacks component model (I think?). Building compenents on the level of byte buffers is
   too low-level.
 * There isn't a default choice of a WASM-compiled scripting language. Even if we use WASM, we'd
   still want 90% of code to be in the same language. Rust feels a bit too low-level to write your
   `init.abont` in.
+
+Decision: keep it Rust. We _really_ need a proper high-iteration-speed scripting language here, but
+there isn't one, and building our own is a yak too hairy. Instead the plan:
+
+* Make strict separation about the API (window creation, etc), the engine realizing API in a form of
+  graphical window, and the `abont` implementation, which uses the API, but doesn't depend (even
+  transitively!) on the engine.
+* At some point later, allow user-scripts, by compiling them to .so/.wasm on the fly.
+* In the far future, pick a real scripting language to slowly transition to.
 
 ### Open-vs-Closed API
 
@@ -128,12 +137,12 @@ there shouldn't be much support for image based programming outside of tightly s
 it is a research question whether tightly scoped live-reload and image based programming are in fact
 distinct things).
 
-### Extension
+### Extensions
 
 We'd rather want to be like VS Code marketplace, rather than like Emacs wiki. Or rather, we want to
 be like Go: everything is decentralized and can be hosted whatever, but there's also default caching
 service which guarantees some amount of availability and also provides some measure of
-discoverability.
+discoverability. Just leverage crates.io?
 
 ### GUI
 
