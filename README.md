@@ -250,7 +250,7 @@ enum SplitArrangement {
 /// Though, it's a bit hard to see how to make Vim vs Emacs bindings customizable without
 /// hard-coding?
 struct Buffer {
-    document: DocumentRef,
+    document: Option<DocumentRef>, // Multi buffers?
     selection: Selection
 }
 
@@ -292,7 +292,7 @@ enum SelectionRequest {
   Everything,
   Start,
   End,
-  Selection(Sellection), 
+  Selection(Sellection),
 }
 
 ```
