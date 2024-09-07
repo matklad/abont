@@ -1,3 +1,6 @@
+use abont_egui::AbontEgui;
+
 fn main() {
-    println!("Hello, world!");
+    let abont_egui = AbontEgui::new();
+    abont_shell::main(&abont_egui);
 }

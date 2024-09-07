@@ -4,3 +4,5 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+abont-egui = { version = "0.0.0", path = "../abont-egui" }
+abont-shell = { version = "0.0.0", path = "../abont-shell" }
