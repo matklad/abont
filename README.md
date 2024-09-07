@@ -285,7 +285,14 @@ impl Abont {
 }
 
 impl Document {
-  fn replace(&mut self, selection: Selection, replacement: AText) {}
+  fn replace(&mut self, selection: SelectionRequest, replacement: AText) {}
+}
+
+enum SelectionRequest {
+  Everything,
+  Start,
+  End,
+  Selection(Sellection), 
 }
 
 ```
