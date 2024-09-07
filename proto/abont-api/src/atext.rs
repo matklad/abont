@@ -18,7 +18,7 @@ pub struct Point {
     pub utf8_index: u32,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AText {
     text: String,
 }
@@ -34,6 +34,10 @@ impl AText {
             SelectionRequest::End => todo!(),
             SelectionRequest::Selection(_) => todo!(),
         }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.text
     }
 }
 
