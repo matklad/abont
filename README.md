@@ -202,6 +202,8 @@ Things which are not innovative per-se, but which would be required to actually 
 That's actually the main thing to fill out! Feel free to send PRs!
 
 ```rust
+// State
+
 /// Singleton repressing the entire abont process. This probably corresponds to a single window.
 /// Do we want to have abont spawning multiple windows? Probably, but I think it would be OK to cut
 /// that, at least initially.
@@ -210,6 +212,7 @@ struct Abont {
     splits: Vec<Split>,
     split_arrangement: SplitArrangement
     buffers: Vec<Buffer>,
+    documents: Vec<Document>,
 }
 
 /// Prompt is a special singleton split used for the primary interraction with the user.
@@ -247,13 +250,22 @@ enum SplitArrangement {
 /// Though, it's a bit hard to see how to make Vim vs Emacs bindings customizable without
 /// hard-coding?
 struct Buffer {
-    text: AText,
-    selections: Vec<Selections>
+    document: DocumentRef,
+    selection: Selection
 }
 
 struct Selection {
-    start: Point,
-    end: Point,
+  ranges: PointRange,
+}
+
+struct PointRage {
+  start: Point,
+  end: Point,
+}
+
+/// A single document could be shown in several buffers
+struct Document {
+  text: AText
 }
 
 /// Logically, this is attributed text! Have no idea how to represent it physically.
@@ -263,10 +275,19 @@ struct AText {
 }
 
 struct Attribute {
-    start: Point,
-    end: Point,
+    range: PointRange,
     value: AttributeValue,
 }
+
+// Operations
+impl Abont {
+  fn create_buffer() -> BufferRef;
+}
+
+impl Document {
+  fn replace(&mut self, selection: Selection, replacement: AText) {}
+}
+
 ```
 
 ### IPC
