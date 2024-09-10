@@ -201,16 +201,15 @@ Things which are not innovative per-se, but which would be required to actually 
 
 That's actually the main thing to fill out! Feel free to send PRs!
 
-```rust
-// State
+#### State
 
+```rust
 /// Singleton repressing the entire abont process. This probably corresponds to a single window.
 /// Do we want to have abont spawning multiple windows? Probably, but I think it would be OK to cut
 /// that, at least initially.
 struct Abont {
     prompt: Prompt,
-    splits: Vec<Split>,
-    split_arrangement: SplitArrangement
+    split_tree: SplitTree,
     buffers: Vec<Buffer>,
     documents: Vec<Document>,
 }
@@ -222,28 +221,22 @@ struct Prompt {
     buffer: BufferRef
 }
 
-/// A single part of split-screen display that displays a single buffer.
-struct Split {
-    buffer: BufferRef
+/// How window is subdivided into splits.
+///
+/// Split tree is n-ary (three side-by-side columns are one level in the tree).
+///
+/// Direction is implicit: `vec![Leaf, Leaf]` is vertical split, `vec![vec![Leaf, Leaf]]` is
+/// horizontal
+///
+/// Splits are ephemeral --- there are no SplitRefs, you can get-set the whole tree at once. 
+struct SplitTree {
+  root: Split
 }
 
-/// I don't know how to arrange splits on the screen! The natural implementation is to just do a
-/// binary tree, but it feels like it would suck?
-enum SplitArrangementBinary {
-    Leaf(SplitRef)
-    VSplit(SplitArrangementBinary, SplitArrangementBinary)
-    HSplit(SplitArrangementBinary, SplitArrangementBinary)
+enum Split {
+  Leaf(BufferRef)
+  Branch(Vec<Split>) // Even branches are v-splits, odd are h-splits.
 }
-
-/// Maybe this is better?
-enum SplitArrangement {
-    Leaf(SplitRef),
-    Split {
-      direction: Vertical | Horizontal,
-      splits: Vec<SplitArrangement>,
-    }
-}
-
 
 /// A Buffer is its textual content plus extra state, notably, cursors.
 /// Do cursors belong in the core model? I think so, they are the primary means of interaction.
@@ -279,13 +272,20 @@ struct Attribute {
     value: AttributeValue,
 }
 
-// Operations
-impl Abont {
-  fn create_buffer() -> BufferRef;
-}
+```
 
-impl Document {
-  fn replace(&mut self, selection: SelectionRequest, replacement: AText) {}
+#### Operations
+
+```rust
+impl Abont {
+  fn split_tree_get() -> SplitTree;
+  fn split_tree_set(SplitTree);
+
+  fn buffer_create() -> BufferRef;
+  fn buffer_show_document(BufferRef, DocumentRef);
+
+  fn document_create() -> DocumentRef;
+  fn document_replace(DocumentRef, SelectionRequest, AText);
 }
 
 enum SelectionRequest {
