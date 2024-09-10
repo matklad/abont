@@ -4,9 +4,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use abont_api::{AText, AbontApi, BufferRef, DocumentRef, SelectionRequest};
+use abont_api::{AText, AbontApi, BufferRef, DocumentRef, SelectionRequest, Split};
 use eframe::glow::COLOR;
-use egui::Color32;
+use egui::{Color32, Layout, Pos2, Rect, Vec2};
 
 pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
     let handle = AbontHandle(Arc::new(Mutex::new(AbontEgui::new())));
@@ -38,6 +38,50 @@ pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
 struct Gui {
     handle: AbontHandle,
 }
+impl Gui {
+    fn update_split(&self, ui: &mut egui::Ui, abont: &AbontEgui, split: &Split, level: u32) {
+        match split {
+            Split::Leaf(buffer) => self.update_buffer(ui, abont, *buffer),
+            Split::Branch(splits) => {
+                if (splits.is_empty()) {
+                    return;
+                }
+                let vertical = level % 2 == 0;
+                let size = ui.available_size();
+                let mut i = 0.0;
+                for split in splits {
+                    let rect = if vertical {
+                        let step = size.y / (splits.len() as f32);
+                        Rect::from_min_size(Pos2::new(0.0, step * i), Vec2::new(size.x, step))
+                    } else {
+                        let step = size.x / (splits.len() as f32);
+                        Rect::from_min_size(Pos2::new(step * i, 0.0), Vec2::new(step, size.y))
+                    };
+                    self.update_split(
+                        &mut ui.child_ui(rect, Layout::default(), None),
+                        abont,
+                        split,
+                        level + 1,
+                    );
+                    i += 1.0;
+                }
+            }
+        }
+    }
+
+    fn update_buffer(&self, ui: &mut egui::Ui, abont: &AbontEgui, buffer_ref: BufferRef) {
+        let Some(buffer) = abont.buffers.get(&buffer_ref) else {
+            return;
+        };
+        let Some(document_ref) = buffer.document else {
+            return;
+        };
+        let Some(document) = abont.documents.get(&document_ref) else {
+            return;
+        };
+        ui.monospace(document.text.as_str());
+    }
+}
 
 impl eframe::App for Gui {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -46,13 +90,7 @@ impl eframe::App for Gui {
             // .frame(egui::Frame::default().fill(Color32::LIGHT_BLUE))
             .show(ctx, |ui| {
                 let handle = self.handle.0.lock().unwrap();
-                for buffer in handle.buffers.values() {
-                    if let Some(document_ref) = buffer.document {
-                        if let Some(document) = handle.documents.get(&document_ref) {
-                            ui.monospace(document.text.as_str());
-                        }
-                    }
-                }
+                self.update_split(ui, &*handle, &handle.splits, 0);
             });
     }
 }
@@ -61,6 +99,14 @@ impl eframe::App for Gui {
 struct AbontHandle(Arc<Mutex<AbontEgui>>);
 
 impl AbontApi for AbontHandle {
+    fn splits_get(&self) -> abont_api::Split {
+        todo!()
+    }
+
+    fn splits_set(&self, splits: abont_api::Split) {
+        self.0.lock().unwrap().splits_set(splits);
+    }
+
     fn buffer_create(&self) -> abont_api::BufferRef {
         self.0.lock().unwrap().buffer_create()
     }
@@ -86,6 +132,7 @@ impl AbontApi for AbontHandle {
 
 #[derive(Default, Debug)]
 pub struct AbontEgui {
+    splits: Split,
     documents: HashMap<DocumentRef, Document>,
     document_id: u32,
     buffers: HashMap<BufferRef, Buffer>,
@@ -95,6 +142,10 @@ pub struct AbontEgui {
 impl AbontEgui {
     fn new() -> AbontEgui {
         AbontEgui::default()
+    }
+
+    fn splits_set(&mut self, splits: abont_api::Split) {
+        self.splits = splits;
     }
 
     fn buffer_create(&mut self) -> BufferRef {

@@ -1,6 +1,6 @@
 //! Uses abont-api to implement shell/editor/file manager.
 
-use abont_api::{AbontApi, SelectionRequest};
+use abont_api::{AbontApi, SelectionRequest, Split};
 
 pub fn main(abont: &dyn AbontApi) {
     let document = abont.document_create();
@@ -8,4 +8,9 @@ pub fn main(abont: &dyn AbontApi) {
 
     let buffer = abont.buffer_create();
     abont.buffer_show_document(buffer, document);
+
+    abont.splits_set(Split::Branch(vec![
+        Split::Leaf(buffer),
+        Split::Leaf(buffer),
+    ]))
 }
