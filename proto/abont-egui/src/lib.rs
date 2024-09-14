@@ -1,12 +1,10 @@
 use std::{
     collections::HashMap,
-    process::Termination,
     sync::{Arc, Mutex},
 };
 
 use abont_api::{AText, AbontApi, BufferRef, DocumentRef, SelectionRequest, Split};
-use eframe::glow::COLOR;
-use egui::{Color32, Layout, Pos2, Rect, Vec2};
+use egui::{Layout, Pos2, Rect, Vec2};
 
 pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
     let handle = AbontHandle(Arc::new(Mutex::new(AbontEgui::new())));
@@ -14,10 +12,6 @@ pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
         let handle = handle.clone();
         move || app(&handle)
     });
-
-    std::thread::sleep_ms(100);
-
-    eprintln!("handle.0.lock().unwrap() = {:?}", handle.0.lock().unwrap());
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
@@ -43,7 +37,7 @@ impl Gui {
         match split {
             Split::Leaf(buffer) => self.update_buffer(ui, abont, *buffer),
             Split::Branch(splits) => {
-                if (splits.is_empty()) {
+                if splits.is_empty() {
                     return;
                 }
                 let vertical = level % 2 == 0;
