@@ -7,3 +7,4 @@ edition = "2021"
 abont-api = { version = "0.0.0", path = "../abont-api" }
 eframe = "0.28.1"
 egui = "0.28.1"
+oneshot = "0.1.8"

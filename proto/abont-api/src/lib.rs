@@ -1,4 +1,5 @@
 //! Defines the interface used by the shell and implemented by the engine.
+#![allow(async_fn_in_trait)]
 mod atext;
 
 pub use atext::{AText, Point, PointRange, Selection, SelectionRequest};
@@ -10,14 +11,14 @@ pub struct DocumentRef(pub u32);
 pub struct BufferRef(pub u32);
 
 pub trait AbontApi {
-    fn splits_get(&self) -> Split;
-    fn splits_set(&self, splits: Split);
+    async fn splits_get(&self) -> Split;
+    async fn splits_set(&self, splits: Split);
 
-    fn buffer_create(&self) -> BufferRef;
-    fn buffer_show_document(&self, buffer: BufferRef, document: DocumentRef);
+    async fn buffer_create(&self) -> BufferRef;
+    async fn buffer_show_document(&self, buffer: BufferRef, document: DocumentRef);
 
-    fn document_create(&self) -> DocumentRef;
-    fn document_replace(&self, document: DocumentRef, selection: SelectionRequest, text: AText);
+    async fn document_create(&self) -> DocumentRef;
+    async fn document_replace(&self, document: DocumentRef, selection: SelectionRequest, text: AText);
 }
 
 #[derive(Debug)]

@@ -1,18 +1,19 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{
+        self,
+        mpsc::{Receiver, Sender},
+    },
 };
 
 use abont_api::{AText, AbontApi, BufferRef, DocumentRef, SelectionRequest, Split};
 use egui::{Layout, Pos2, Rect, Vec2};
 
-pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
-    let handle = AbontHandle(Arc::new(Mutex::new(AbontEgui::new())));
-    let app_thread = std::thread::spawn({
-        let handle = handle.clone();
-        move || app(&handle)
-    });
+pub trait AbontApp: 'static {
+    fn start(self, abont_api: impl AbontApi + Send + 'static);
+}
 
+pub fn run(app: impl AbontApp) -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
@@ -21,17 +22,42 @@ pub fn run(app: Box<dyn FnOnce(&dyn AbontApi) + Send>) -> eframe::Result {
         "abont",
         options,
         Box::new(move |cc| {
-            // This gives us image support:
-            Ok(Box::new(Gui { handle }))
+            let (tx, rx) = sync::mpsc::channel();
+            app.start(AbontHandle {
+                tx,
+                ctx: cc.egui_ctx.clone(),
+            });
+
+            Ok(Box::new(Gui {
+                rx,
+                abont: AbontEgui::new(),
+            }))
         }),
     );
-    app_thread.join().unwrap();
     result
 }
 
+type F = Box<dyn FnOnce(&mut AbontEgui) + Send + 'static>;
+
 struct Gui {
-    handle: AbontHandle,
+    rx: Receiver<F>,
+    abont: AbontEgui,
 }
+
+impl eframe::App for Gui {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        while let Ok(f) = self.rx.try_recv() {
+            f(&mut self.abont)
+        }
+        ctx.set_visuals(egui::Visuals::light());
+        egui::CentralPanel::default()
+            // .frame(egui::Frame::default().fill(Color32::LIGHT_BLUE))
+            .show(ctx, |ui| {
+                self.update_split(ui, &self.abont, &self.abont.splits, 0);
+            });
+    }
+}
+
 impl Gui {
     fn update_split(&self, ui: &mut egui::Ui, abont: &AbontEgui, split: &Split, level: u32) {
         match split {
@@ -77,50 +103,60 @@ impl Gui {
     }
 }
 
-impl eframe::App for Gui {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_visuals(egui::Visuals::light());
-        egui::CentralPanel::default()
-            // .frame(egui::Frame::default().fill(Color32::LIGHT_BLUE))
-            .show(ctx, |ui| {
-                let handle = self.handle.0.lock().unwrap();
-                self.update_split(ui, &*handle, &handle.splits, 0);
-            });
+#[derive(Clone)]
+struct AbontHandle {
+    ctx: egui::Context,
+    tx: Sender<F>,
+}
+
+impl AbontHandle {
+    async fn call<T: Send + Sync + 'static>(
+        &self,
+        f: impl FnOnce(&mut AbontEgui) -> T + Send + Sync + 'static,
+    ) -> T {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.tx.send(Box::new(move |abont| {
+            let _ = tx.send(f(abont));
+        }));
+        self.ctx.request_repaint();
+        rx.await.unwrap()
     }
 }
 
-#[derive(Clone)]
-struct AbontHandle(Arc<Mutex<AbontEgui>>);
-
 impl AbontApi for AbontHandle {
-    fn splits_get(&self) -> abont_api::Split {
+    async fn splits_get(&self) -> abont_api::Split {
         todo!()
     }
 
-    fn splits_set(&self, splits: abont_api::Split) {
-        self.0.lock().unwrap().splits_set(splits);
+    async fn splits_set(&self, splits: abont_api::Split) {
+        self.call(move |abont| abont.splits_set(splits)).await
     }
 
-    fn buffer_create(&self) -> abont_api::BufferRef {
-        self.0.lock().unwrap().buffer_create()
+    async fn buffer_create(&self) -> abont_api::BufferRef {
+        self.call(move |abont| abont.buffer_create()).await
     }
 
-    fn buffer_show_document(&self, buffer: abont_api::BufferRef, document: abont_api::DocumentRef) {
-        self.0
-            .lock()
-            .unwrap()
-            .buffer_show_document(buffer, document)
+    async fn buffer_show_document(
+        &self,
+        buffer: abont_api::BufferRef,
+        document: abont_api::DocumentRef,
+    ) {
+        self.call(move |abont| abont.buffer_show_document(buffer, document))
+            .await
     }
 
-    fn document_create(&self) -> abont_api::DocumentRef {
-        self.0.lock().unwrap().document_create()
+    async fn document_create(&self) -> abont_api::DocumentRef {
+        self.call(move |abont| abont.document_create()).await
     }
 
-    fn document_replace(&self, document: DocumentRef, selection: SelectionRequest, text: AText) {
-        self.0
-            .lock()
-            .unwrap()
-            .document_replace(document, selection, text)
+    async fn document_replace(
+        &self,
+        document: DocumentRef,
+        selection: SelectionRequest,
+        text: AText,
+    ) {
+        self.call(move |abont| abont.document_replace(document, selection, text))
+            .await
     }
 }
 
