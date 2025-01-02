@@ -67,10 +67,10 @@ which you can then compose in a shell.
 
 It seems that the sweet spot is to straddle to levels --- have _both_ composability across processes
 and extensibility within the process. Vim, Emacs, and shell all have a scripting engine, and
-affordances for outsorting work to external processes.
+affordances for outsourcing the work to external processes.
 
-Where Emacs falls short, I think, is in not exposing Emacs date model to ,external world. As far as
-I know, there's no easy way to implement Magit as a separate process.
+Where Emacs falls short, I think, is in not exposing Emacs date model to the external world. As far
+as I know, there's no easy way to implement Magit as a separate process.
 
 So, one specific technical goal of Abont is to introduce an IPC protocol to expose a **set of
 attributed text buffers** across the process boundary.
@@ -99,6 +99,8 @@ two blockers:
 * There isn't a default choice of a WASM-compiled scripting language. Even if we use WASM, we'd
   still want 90% of code to be in the same language. Rust feels a bit too low-level to write your
   `init.abont` in.
+
+If we forgo static types, then it makes sense to take a look at Lua, or, better Janet.
 
 Decision: keep it Rust. We _really_ need a proper high-iteration-speed scripting language here, but
 there isn't one, and building our own is a yak too hairy. Instead the plan:
@@ -139,10 +141,10 @@ distinct things).
 
 ### Extensions
 
-We'd rather want to be like VS Code marketplace, rather than like Emacs wiki. Or rather, we want to
-be like Go: everything is decentralized and can be hosted whatever, but there's also default caching
-service which guarantees some amount of availability and also provides some measure of
-discoverability. Just leverage crates.io?
+We'd want to be like VS Code marketplace, rather than like Emacs wiki. Or rather, we want to be like
+Go: everything is decentralized and can be hosted whatever, but there's also default caching service
+which guarantees some amount of availability and also provides some measure of discoverability. Just
+leverage crates.io?
 
 ### GUI
 
@@ -214,7 +216,7 @@ struct Abont {
     documents: Vec<Document>,
 }
 
-/// Prompt is a special singleton split used for the primary interraction with the user.
+/// Prompt is a special singleton split used for the primary interaction with the user.
 /// Think command palette, `M-x`, or, indeed, shell's prompt. Maybe we want to display it at the
 /// bottom, like in Emacs, or maybe we want to popup it front and center.
 struct Prompt {
@@ -228,7 +230,7 @@ struct Prompt {
 /// Direction is implicit: `vec![Leaf, Leaf]` is vertical split, `vec![vec![Leaf, Leaf]]` is
 /// horizontal
 ///
-/// Splits are ephemeral --- there are no SplitRefs, you can get-set the whole tree at once. 
+/// Splits are ephemeral --- there are no SplitRefs, you can get-set the whole tree at once.
 struct SplitTree {
   root: Split
 }
@@ -255,6 +257,11 @@ struct PointRage {
   start: Point,
   end: Point,
 }
+
+/// Point _points_ at text. Physically, it is utf-8 offset that logically points at the nearest
+/// utf-8 boundary. As we are open for extension, we want to be forgiving here --- don't through
+/// index out of bounds, but rather fix stuff up.
+struct Point(u32);
 
 /// A single document could be shown in several buffers
 struct Document {
@@ -292,9 +299,8 @@ enum SelectionRequest {
   Everything,
   Start,
   End,
-  Selection(Sellection),
+  Selection(Selection),
 }
-
 ```
 
 ### IPC
